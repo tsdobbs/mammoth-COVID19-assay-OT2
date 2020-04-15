@@ -4,8 +4,9 @@ metadata = {
     'protocolName': 'DETECTR COVID-19 Assay Part 1',
     'author': 'Tim S Dobbs',
     'source': 'Mammoth Biosciences',
-    'link': 'https://mammoth.bio/wp-content/uploads/2020/03/Mammoth-Biosciences-A-protocol-for-rapid-detection-of-SARS-CoV-2-using-CRISPR-diagnostics-DETECTR.pdf'
-    'description': """
+    'link': 'https://mammoth.bio/wp-content/uploads/2020/03/Mammoth-Biosciences-A-protocol-for-rapid-detection-of-SARS-CoV-2-using-CRISPR-diagnostics-DETECTR.pdf',
+    'description':
+        """
                     Part 1 of an implementation of the Mammoth Biosciences DETECTR assay
                     to detect COVID-19 on the Opentrons OT2. This file is Part 1 - Prep
                     of LbCas12a RNP complex. This material is used to report RNA present
@@ -33,15 +34,17 @@ metadata = {
     }
 
 def run(protocol: protocol_api.ProtocolContext):
+    
+    
     temp_module = protocol.load_module('Temperature Module', 5)
 
-    p10rack = protocol.load_labware('tiprack-10ul', 9)
-    reagents = labware.load(
-        'opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 8)
+    p10rack = protocol.load_labware('opentrons_96_tiprack_10ul', 9)
+    
+    reagents = protocol.load_labware('opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 8)
     prep_plate = temp_module.load_labware('nest_96_wellplate_200ul_flat')
     
     # Using 10ul pipette for precision
-    p10 = protocol.load_instrument('p10_single', 'left', tipracks = [p10rack]) 
+    p10 = protocol.load_instrument('p10_single', 'left', tip_racks = [p10rack])
 
 
     base_recipe = { # reagent name: [postion on tuberack, uls to each sample]
@@ -60,23 +63,23 @@ def run(protocol: protocol_api.ProtocolContext):
     prep_plate_wells = ['A1','A2','A3'] #1st: N-gene wells, 2nd: E-gene, 3rd: RNase P
     prep_plate_locations = [prep_plate.wells(well) for well in prep_plate_wells]
 
-    reporter_recipe = base_recipe.[pop('reporter')] #move reporter to be used later
+    reporter_recipe = base_recipe['reporter'] #move reporter to be used later
 
-
+#    print(prep_plate_locations)
     #Begin Procedure ---------------------------------------------------------
     for reagent in base_recipe: #TODO Don't need for-loop, can do with .distribute only
         p10.distribute(base_recipe[reagent][1],                  #volume
                     reagents.wells(base_recipe[reagent][0]),     #source location
                     prep_plate_locations)                        #dest location
 
-    for group, gRNA in enum(gRNA_recipe):
+    for group, gRNA in enumerate(gRNA_recipe):
         p10.transfer(gRNA_recipe[gRNA][1],                      #volume
-                        reagents.wells(base_recipe[gRNA][0]),   #source location
+                        reagents.wells(gRNA_recipe[gRNA][0]),   #source location
                         prep_plate_locations[group],            #dest location
                         mix_after=(2,10))                       #ensure good mixing
 
     temp_module.set_temperature(37) #robot pauses until temperature is reached
-    p10.delay(minutes=30)
+    protocol.delay(minutes=30)
 
     temp_module.set_temperature(4)
 

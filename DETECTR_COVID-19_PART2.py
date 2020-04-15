@@ -4,7 +4,7 @@ metadata = {
     'protocolName': 'DETECTR COVID-19 Assay Part 2',
     'author': 'Tim S Dobbs',
     'source': 'Mammoth Biosciences',
-    'link': 'https://mammoth.bio/wp-content/uploads/2020/03/Mammoth-Biosciences-A-protocol-for-rapid-detection-of-SARS-CoV-2-using-CRISPR-diagnostics-DETECTR.pdf'
+    'link': 'https://mammoth.bio/wp-content/uploads/2020/03/Mammoth-Biosciences-A-protocol-for-rapid-detection-of-SARS-CoV-2-using-CRISPR-diagnostics-DETECTR.pdf',
     'description': """
                     Part 2 of an implementation of the Mammoth Biosciences DETECTR assay
                     to detect COVID-19 on the Opentrons OT2. This file is Part 2 - Run
@@ -41,15 +41,14 @@ metadata = {
 def run(protocol: protocol_api.ProtocolContext):
     temp_module = protocol.load_module('Temperature Module', 5)
 
-    p10rack = protocol.load_labware('tiprack-10ul', 9)
-    reagents = labware.load(
-        'opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 8)
+    p10rack = protocol.load_labware('opentrons_96_tiprack_10ul', 9)
+    reagents = protocol.load_labware('opentrons_24_tuberack_eppendorf_2ml_safelock_snapcap', 8)
     prep_plate = temp_module.load_labware('nest_96_wellplate_200ul_flat')
     sample_plate = protocol.load_labware('nest_96_wellplate_200ul_flat', 6)
     LbCas_plate = protocol.load_labware('nest_96_wellplate_200ul_flat', 2)
     
     # Using 10ul pipette for precision
-    p10 = protocol.load_instrument('p10_single', 'left', tipracks = [p10rack]) 
+    p10 = protocol.load_instrument('p10_single', 'left', tip_racks = [p10rack])
 
 
     base_recipe = { # reagent name: [postion on tuberack, uls to each sample]
@@ -77,7 +76,7 @@ def run(protocol: protocol_api.ProtocolContext):
     prep_plate_wells = ['A1','A2','A3'] #1st: N-gene wells, 2nd: E-gene, 3rd: RNase P
     prep_plate_locations = [prep_plate.wells(well) for well in prep_plate_wells]
 
-    buffer_recipe = base_recipe.[pop('10X_NEBuffer_21')] #move reporter to be used later
+    buffer_recipe = base_recipe['10X_NEBuffer_21'] #move reporter to be used later
 
 
     #Begin Procedure ---------------------------------------------------------
@@ -93,23 +92,22 @@ def run(protocol: protocol_api.ProtocolContext):
                     mix_after=(2,10))
 
     temp_module.set_temperature(62) #robot pauses until temperature is reached
-    p10.delay(minutes=20)
+    protocol.delay(minutes=20)
 
     #cooling before loading next reagents to not expose LbCas12a solution high temps
     temp_module.set_temperature(37)
-    
+#    print(prep_plate_locations)
     for gRNA in LbCas_recipe:
         p10.distribute(LbCas_recipe[gRNA][1],
-                    LbCas_recipe[gRNA][0],
-                    prep_plate_locations
-                    )
+                    reagents.wells(LbCas_recipe[gRNA][0]),
+                    prep_plate_locations)
 
     p10.transfer(buffer_recipe[1],
-                buffer_recipe[0],
+                reagents.wells(buffer_recipe[0]),
                 prep_plate_locations,
                 mix_after=(2,10))
 
-    p10.delay(minutes=10)
+    protocol.delay(minutes=10)
 
     print("""Insert Milenia HybridDetect 1 (TwistDx) lateral flow strip directly into each sample
             Wait 2 minutes at room temp
